@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# opencode config (contains MCP auth tokens; see opencode.json.example)
+opencode.json

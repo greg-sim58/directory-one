@@ -1,0 +1,10 @@
+.next
+node_modules
+package-lock.json
+public
+.env
+.env.local
+.env.*.local
+drizzle
+*.tsbuildinfo
+next-env.d.ts

@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780591435459,
+      "tag": "0000_normal_marten_broadcloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780591465903,
+      "tag": "0001_postgis",
+      "breakpoints": true
+    }
+  ]
+}
