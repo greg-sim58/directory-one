@@ -1,30 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { z } from 'zod';
+import { searchBusinesses } from '@/lib/search/queries';
 
-// Phase 1 stub. Phase 4 wires Meilisearch client + LRU cache + Zod-validated query.
+// Phase 4: server-side search proxy. Zod is applied inside
+// searchBusinesses (lib/search/queries.ts) so the same schema validates
+// both this route and the RSC call site.
 
-const QuerySchema = z.object({
-  q: z.string().optional(),
-  city: z.string().optional(),
-  category: z.string().optional(),
-  filters: z.string().optional(),
-});
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const parsed = QuerySchema.safeParse({
-    q: url.searchParams.get('q') ?? undefined,
-    city: url.searchParams.get('city') ?? undefined,
-    category: url.searchParams.get('category') ?? undefined,
-    filters: url.searchParams.get('filters') ?? undefined,
-  });
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  const params: Record<string, string> = {};
+  for (const [k, v] of url.searchParams.entries()) {
+    params[k] = v;
   }
 
-  return NextResponse.json(
-    { hits: [], total: 0, query: parsed.data, note: 'search proxy stub' },
-    { headers: { 'Cache-Control': 'no-store' } },
-  );
+  const result = await searchBusinesses(params);
+
+  return NextResponse.json(result, {
+    headers: {
+      // Vercel edge cache: 60s fresh, 5min stale-while-revalidate.
+      // The Drizzle query under the hood is fast, but identical
+      // requests from the SWR client in /[city]/[category] still
+      // benefit from the shared cache.
+      'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300',
+    },
+  });
 }

@@ -31,3 +31,8 @@ export const categoryIconMap: Record<string, LucideIcon> = {
 export function getCategoryIcon(slug: string): LucideIcon {
   return categoryIconMap[slug] ?? Wrench;
 }
+
+// Stable module-level fallback so consumers that destructure icons
+// outside of getCategoryIcon (e.g. RSC cards) never store an
+// `undefined` reference.
+export const WrenchFallback = Wrench;

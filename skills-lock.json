@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "excalidraw-diagram-generator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/excalidraw-diagram-generator/SKILL.md",
+      "computedHash": "e24e3c4cab4b5a07bc1d1801db14868f3a1cd184f7f28f5dd2c4a2b234bf2f2d"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
@@ -24,6 +30,12 @@
       "sourceType": "github",
       "skillPath": "skills/plan-reviewer/SKILL.md",
       "computedHash": "ad3fdf9ea7c33b9fbe236bfd404be8edc03274c1d6967e1928ce596af233de00"
+    },
+    "security-scan": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/security-scan/SKILL.md",
+      "computedHash": "da0906902dd47d54357b9d80d50c4dcc9c350137dbe5a7fb7fc9830245a57c1e"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",

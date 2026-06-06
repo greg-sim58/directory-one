@@ -5,7 +5,7 @@
 ## Pre-flight decisions (block everything — from plan §14)
 
 - [ ] Confirm launch city (default: Austin, TX)
-- [ ] Meilisearch: self-host vs Meilisearch Cloud
+- [ ] Search engine: in-process Postgres (current) vs Meilisearch/Algolia/Typesense (deferred until >5k businesses per city)
 - [ ] Auth providers: email magic link + Google?
 - [ ] Review moderation policy (auto-publish vs queue first review)
 - [ ] Image moderation (none for MVP, rely on reports?)
@@ -54,24 +54,28 @@
 
 ## Phase 4 — Search + filters (3–4d)
 
-- [ ] Meilisearch client + index config (`lib/search/`)
-- [ ] Index seed data into Meilisearch (geo filter `_geo`)
-- [ ] `/api/search` route (Zod validate, `s-maxage` + SWR)
-- [ ] `/api/reindex` route (cron)
-- [ ] `SearchBar` (client, debounced, optimistic)
-- [ ] `FilterPanel` (client, URL sync)
-- [ ] `ResultsList` + `ResultCard` (RSC)
-- [ ] Suspense skeletons per region
-- [ ] LRU cache for facet counts
+- [x] `lib/search/queries.ts` — Drizzle/Postgres in-process search (page + total + 2 facet queries in parallel; `React.cache` dedup)
+- [x] `/api/search` route (Zod validate, `s-maxage=60`, `stale-while-revalidate=300`)
+- [x] `/api/reindex` route (no-op heartbeat; vercel.json cron `0 4 * * 0`)
+- [x] LRU cache for facet counts (60s, 500 entries, `lib/cache`)
+- [x] `SearchBar` (client, debounced, optimistic URL write via `router.replace` + `startTransition`)
+- [x] `FilterPanel` (client, URL sync for sort/price/amenities, facet counts)
+- [x] `ResultsList` + `ResultCard` (RSC, DTO projection)
+- [x] Suspense skeletons per region (`components/search/skeletons`)
+
+> **Search engine:** in-process Drizzle queries on Postgres. No external service, no index to manage, no reindex step. Single seam (`lib/search/queries.ts`) can be swapped for Meilisearch/Algolia/Typesense later by replacing that one file.
 
 ## Phase 5 — Map split view (2–3d)
 
-- [ ] Mapbox env + style config
-- [ ] `Map` component (`next/dynamic({ssr:false})`)
-- [ ] `MapPin` (client marker)
-- [ ] `SplitView` (list ↔ map pin sync)
-- [ ] bbox updates on filter change
-- [ ] `/api/geocode` route + LRU cache (10min TTL)
+- [x] Mapbox env + style config (`NEXT_PUBLIC_MAPBOX_TOKEN` + `MAPBOX_STYLE_LIGHT/DARK` in `lib/map/mapbox-style.ts`)
+- [x] `MapClient` (Client boundary) → `MapView` (lazy-loaded via `next/dynamic({ ssr: false })` per Next 16 lazy-loading rules)
+- [x] `MapPin` (custom client marker, lucide `MapPin`, keyboard-focusable)
+- [x] `MapSyncProvider` Context for list ↔ map pin highlight (hover/focus)
+- [x] bbox updates on filter change — re-fit only when the current view contains zero of the new pins (preserves user's pan/zoom when possible)
+- [x] Responsive layout: 3-col on `xl:`, 2-col on `lg:`, stacked `<lg` (filter | list | map → filter | list+map → all stacked)
+- [x] Geocoding rate limit (10/min/IP) in `app/api/geocode/route.ts`; in-memory per-instance (MVP), 429 + `Retry-After`
+- [x] Accessibility: `aria-label` on map + pins, `aria-current` on selected card, `prefers-reduced-motion` disables flyTo, dark style under `prefers-color-scheme: dark`
+- [x] Lazy bundle: mapbox-gl + react-map-gl + mapbox-gl.css only ship on the category page (≈250KB gz)
 - [ ] Geocoding IP rate limit (10/min/IP)
 
 ## Phase 6 — Business profile (3–4d)
@@ -131,7 +135,7 @@
 - [ ] Error tracking (Sentry or equivalent)
 - [ ] Cookie consent banner (no third-party trackers pre-consent)
 - [ ] GDPR/CCPA: data export + delete endpoints
-- [ ] Vercel usage alerts (Mapbox, Blob, Meilisearch)
+- [ ] Vercel usage alerts (Mapbox, Blob)
 - [ ] Smoke test: seed → index → search → profile → submit review → moderate
 
 ## Carve-out notes (from the plan review)

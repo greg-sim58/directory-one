@@ -1,20 +1,22 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Phase 1 stub. Phase 4 wires Meilisearch index sync (called by cron).
-// Protected by a shared secret in production; the cron header is checked here.
+// Phase 4: search is in-process against Postgres, so there is no
+// separate index to rebuild. The route exists as a no-op so the
+// vercel.json cron (weekly heartbeat) and any existing monitoring
+// integration continue to work — Phase 5+ can repurpose it for
+// other background work without changing the contract.
 
-export async function POST(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (
-    auth !== `Bearer ${process.env.REINDEX_SECRET ?? ''}` &&
-    process.env.NODE_ENV === 'production'
-  ) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // seconds — Vercel hint for background-ish jobs
 
-  return NextResponse.json({ note: 'reindex stub' });
+export async function POST() {
+  return NextResponse.json({
+    ok: true,
+    message: 'search engine is in-process; no reindex required',
+    at: new Date().toISOString(),
+  });
 }
 
 export async function GET() {
-  return NextResponse.json({ note: 'reindex stub — use POST' });
+  return NextResponse.json({ ok: true, hint: 'POST to trigger a no-op heartbeat' });
 }

@@ -50,6 +50,7 @@ export default async function CityHomePage({ params }: { params: Params }) {
             action={`/${city}`}
             method="get"
             className="bg-card flex max-w-md items-center gap-2 rounded-lg border px-3 py-2"
+            suppressHydrationWarning
           >
             <Search className="text-muted-foreground h-4 w-4" />
             <input
@@ -57,6 +58,7 @@ export default async function CityHomePage({ params }: { params: Params }) {
               name="q"
               placeholder="Search plumbers, restaurants, dentists…"
               className="placeholder:text-muted-foreground w-full bg-transparent text-sm outline-none"
+              suppressHydrationWarning
             />
           </form>
           <p className="text-muted-foreground text-xs">

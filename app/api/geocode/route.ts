@@ -1,10 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getCachedGeocode, setCachedGeocode } from '@/lib/cache';
+import { enforceRateLimit, getClientIp } from '@/lib/map/rate-limit';
 
 // Phase 3: real Mapbox forward + reverse geocoding, LRU-cached for 10 minutes.
 // The token is server-only (`MAPBOX_SECRET_TOKEN`); the public token stays
 // on the client for Mapbox GL rendering.
+//
+// Phase 5: per-IP rate limit (10 req/min) to bound Mapbox spend. The
+// limiter is in-memory and per-instance; see lib/map/rate-limit.ts for
+// the production caveat.
 
 const MAPBOX_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 
@@ -78,6 +83,24 @@ async function geocodeReverse(lat: number, lon: number) {
 }
 
 export async function GET(request: NextRequest) {
+  // Rate limit first — reject before doing any parsing or upstream work.
+  const ip = getClientIp(request);
+  const limit = enforceRateLimit(`geocode:${ip}`, 10, 60_000);
+  if (!limit.ok) {
+    const retryAfter = Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: 'rate_limited', message: 'Too many geocode requests. Try again shortly.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfter),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.floor(limit.resetAt / 1000)),
+        },
+      },
+    );
+  }
+
   const url = new URL(request.url);
   const parsed = QuerySchema.safeParse({
     q: url.searchParams.get('q') ?? undefined,
@@ -97,6 +120,10 @@ export async function GET(request: NextRequest) {
 
   if (result instanceof NextResponse) return result;
   return NextResponse.json(result, {
-    headers: { 'Cache-Control': 'public, max-age=0, s-maxage=600' },
+    headers: {
+      'Cache-Control': 'public, max-age=0, s-maxage=600',
+      'X-RateLimit-Remaining': String(limit.remaining),
+      'X-RateLimit-Reset': String(Math.floor(limit.resetAt / 1000)),
+    },
   });
 }
