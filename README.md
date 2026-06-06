@@ -127,3 +127,36 @@ State stays in Context (not URL) to avoid a server re-render on every hover. A s
 ### Bundle
 
 mapbox-gl + react-map-gl ≈ 250 KB gzipped. Because they're inside `next/dynamic({ ssr: false })`, the home page and city home don't pay this cost — only the category browse page does.
+
+## Business profile (Phase 6)
+
+`/{city}/{category}/{slug}` renders the full business detail page. `force-dynamic` so it always reads fresh reviews/hours from the DB; React.cache dedupes the parallel reads.
+
+### Layout
+
+| Region        | Type   | Notes |
+|---------------|--------|-------|
+| Gallery       | Client | 1–3 photo layout, lightbox via shadcn Dialog, arrow + ESC nav, `next/image priority` on the hero |
+| NAPWHeader    | RSC    | Breadcrumb, badges (status, open/closed, price), Stars, address/phone/website as plain `<a>` |
+| OneTapBar     | Client | Sticky bottom on mobile (IntersectionObserver hides past the NAPW), inline card on desktop; Call/Directions/Share enabled, Save + Write-a-review disabled with tooltips |
+| ReviewsList   | RSC    | Summary header, sorted by `created_at desc`, owner-response blockquote |
+| HoursCard     | RSC    | 7-row list, today row bolded, server-formatted `9:00 AM – 5:00 PM` in city timezone |
+| NearbyMap     | RSC    | Reuses `MapClient` (lazy-loaded Mapbox), 8 nearest neighbors via `ST_Distance` + `ST_DWithin` |
+
+### Photos
+
+Seeded by `db/seed.ts` — 1 hero (1400×900) + 2 thumbnails (800×600) per business, deterministically picked from a 20-photo Unsplash catalog by SHA-256 hash of the slug. URL format: `https://images.unsplash.com/photo-{id}?w=…&h=…&fit=crop&auto=format&q=80`. `next.config.ts` already whitelists `images.unsplash.com` in `images.remotePatterns`.
+
+If a photo is later removed from Unsplash, the `Gallery` shows a category-tinted placeholder — the seed doesn't need updating.
+
+### Open / closed
+
+Computed server-side in `lib/profile/hours.ts` using the city's `timezone` + the `hours jsonb` window. No client `Date` to avoid hydration mismatches. The pill next to the business name shows `Open · Closes 5:00 PM`, `Closed now`, or is omitted if hours aren't listed.
+
+### JSON-LD
+
+A `<script type="application/ld+json">` block emits Schema.org `LocalBusiness` with `address`, `geo`, `telephone`, `url` (website), `openingHoursSpecification` (derived from hours), `aggregateRating` (only when there are reviews), and `priceRange` (`$` / `$$` / `$$$`). Google's docs allow this for unclaimed listings; we render it regardless of `status`.
+
+### Auth-dependent actions
+
+Phase 6 renders "Write a review" and "Save" as disabled buttons with `title` tooltips (`"Sign in to write a review (coming soon)"`). They become real in Phase 7 / 8 — no link to `/signin` from the profile page in this phase.

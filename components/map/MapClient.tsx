@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 
-import type { BusinessDoc } from '@/lib/validation';
 import type { LngLatBounds } from '@/lib/map/bounds';
 import { MapRegionSkeleton } from './skeletons/MapRegionSkeleton';
 
@@ -19,8 +18,19 @@ const MapView = dynamic(() => import('./MapView'), {
   loading: () => <MapRegionSkeleton />,
 });
 
+// The minimum surface MapView consumes from each pin: id, name, slug,
+// lat, lon. BusinessDoc (search response) satisfies this; NearbyMap
+// (Phase 6) builds a smaller ad-hoc object — both work.
+export type MapPin = {
+  id: string;
+  name: string;
+  slug: string;
+  lat: number;
+  lon: number;
+};
+
 type Props = {
-  hits: BusinessDoc[];
+  hits: MapPin[];
   citySlug: string;
   categorySlug: string;
   fallbackBounds?: LngLatBounds;

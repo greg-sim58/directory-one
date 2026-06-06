@@ -10,7 +10,7 @@
 // duplicate. The seed users are inserted with onConflictDoNothing on email.
 
 import 'dotenv/config';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../lib/db/client';
 import {
@@ -19,6 +19,7 @@ import {
   cities,
   reviews,
   users,
+  type PhotoRef,
   type WeeklyHours,
 } from '../lib/db/schema';
 
@@ -49,6 +50,55 @@ const categorySeeds = [
   { slug: 'veterinarians', name: 'Veterinarians' },
   { slug: 'landscaping', name: 'Landscaping' },
 ];
+
+// ---------- Photo catalog (Unsplash hot-link) ----------
+// 20 public Unsplash photo IDs. Each business picks 1 hero + 2 thumbs
+// deterministically from its slug (see `pickPhotos` below). `next.config.ts`
+// already whitelists `images.unsplash.com` in `images.remotePatterns`.
+//
+// If a photo is later removed, the Gallery's `onError` swaps in a
+// category-tinted placeholder — the seed doesn't need to know.
+
+const PHOTO_IDS = [
+  '1556909114-f6e7ad7d3136',
+  '1554118811-1e0d58224f24',
+  '1517248135467-4c7edcad34c4',
+  '1517336714731-489689fd1ca8',
+  '1497366216548-37526070297c',
+  '1497366811353-6870744d04b2',
+  '1556761175-5973dc0f32e7',
+  '1521737604893-d14cc237f11d',
+  '1581092918056-0c4c3acd3789',
+  '1556761175-b413da4baf72',
+  '1505740420928-5e560c06d30e',
+  '1565299624946-b28f40a0ae38',
+  '1555396273-367ea4eb4db5',
+  '1556761175-4b46a572b786',
+  '1564507592333-c60657eea523',
+  '1568992687947-868a62a9f521',
+  '1565299507177-b0ac66763828',
+  '1546069901-ba9599a7e63c',
+  '1525351484163-7529414344d8',
+  '1486718448742-163732cd1544',
+] as const;
+
+function unsplashUrl(id: string, w: number, h: number): string {
+  return `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=80`;
+}
+
+function pickPhotos(slug: string): PhotoRef[] {
+  const hash = createHash('sha256').update(slug).digest();
+  const heroIndex = hash[0]! % PHOTO_IDS.length;
+  let thumb1 = hash[1]! % PHOTO_IDS.length;
+  if (thumb1 === heroIndex) thumb1 = (thumb1 + 1) % PHOTO_IDS.length;
+  let thumb2 = hash[2]! % PHOTO_IDS.length;
+  if (thumb2 === heroIndex || thumb2 === thumb1) thumb2 = (thumb2 + 1) % PHOTO_IDS.length;
+  return [
+    { url: unsplashUrl(PHOTO_IDS[heroIndex]!, 1400, 900), w: 1400, h: 900 },
+    { url: unsplashUrl(PHOTO_IDS[thumb1]!, 800, 600), w: 800, h: 600 },
+    { url: unsplashUrl(PHOTO_IDS[thumb2]!, 800, 600), w: 800, h: 600 },
+  ];
+}
 
 // ---------- Business name templates ----------
 
@@ -264,6 +314,21 @@ async function main() {
 
   await db.insert(users).values(userRows).onConflictDoNothing();
 
+  // Re-read users by email so the reviews below reference the canonical
+  // UUIDs that are actually in the DB (the user UUIDs in `userRows` are
+  // random per-run; on a re-seed the inserts are no-ops, leaving those
+  // UUIDs dangling).
+  const seededUsers = await db
+    .select({ id: users.id, email: users.email })
+    .from(users);
+  const userByEmail = new Map(seededUsers.map((u) => [u.email, u.id]));
+  const canonicalUserIds = userRows
+    .map((r) => userByEmail.get(r.email))
+    .filter((id): id is string => !!id);
+  if (canonicalUserIds.length === 0) {
+    throw new Error('No seeded users found after insert');
+  }
+
   // 4. Businesses: 5 per category, 50 total
   const businessRows: (typeof businesses.$inferInsert)[] = [];
   for (const cat of categorySeeds) {
@@ -291,7 +356,7 @@ async function main() {
         hours: hoursTemplate,
         priceTier: (1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3,
         amenities: pickN(amenityPool, 3 + Math.floor(Math.random() * 3)),
-        photos: [],
+        photos: pickPhotos(slugify(name)),
         status: 'unclaimed',
       });
     }
@@ -318,10 +383,10 @@ async function main() {
 
   for (const biz of allBusinesses) {
     for (let i = 0; i < 4; i++) {
-      const user = userRows[Math.floor(Math.random() * userRows.length)];
+      const userId = canonicalUserIds[Math.floor(Math.random() * canonicalUserIds.length)]!;
       reviewRows.push({
         businessId: biz.id,
-        userId: user.id,
+        userId,
         rating: (3 + Math.floor(Math.random() * 3)) as 3 | 4 | 5,
         text: reviewTexts[Math.floor(Math.random() * reviewTexts.length)],
         verifiedPurchase: Math.random() > 0.5,

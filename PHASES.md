@@ -80,15 +80,20 @@
 
 ## Phase 6 — Business profile (3–4d)
 
-- [ ] `app/(app)/[city]/[category]/[slug]/page.tsx`
-- [ ] `NAPWHeader` (RSC)
-- [ ] `HoursCard` (RSC, from `hours jsonb`)
-- [ ] `Gallery` (client carousel, `next/image`, `priority` on first)
-- [ ] `ReviewsList` (RSC, `toSorted` by created_at)
-- [ ] `OneTapBar` (client, sticky on mobile, tel:/maps:/share: handlers)
-- [ ] `NearbyMap` (client, radius from `geom`)
-- [ ] LocalBusiness JSON-LD structured data
-- [ ] `React.cache(getBusinessBySlug)`, `getCity`, `getUser`
+- [x] `app/(app)/[city]/[category]/[slug]/page.tsx` (RSC, force-dynamic, JSON-LD, grid layout)
+- [x] `NAPWHeader` (RSC, breadcrumb, badges, stars, address/phone/website)
+- [x] `HoursCard` (RSC, today bold, server-formatted `9:00 AM – 5:00 PM` in city timezone)
+- [x] `Gallery` (Client, 1–3 layout, lightbox via shadcn Dialog, arrow/ESC nav, priority on hero)
+- [x] `ReviewsList` (RSC, summary header, owner-response blockquote, "Write a review" disabled CTA with tooltip)
+- [x] `OneTapBar` (Client, sticky on mobile, IntersectionObserver scroll-hide, Call/Directions/Share/Save; Save disabled)
+- [x] `NearbyMap` (RSC + reused `MapClient` lazy-load; 8 nearest neighbors via `ST_Distance` + `ST_DWithin`)
+- [x] LocalBusiness JSON-LD (aggregateRating, openingHoursSpecification, priceRange, geo)
+- [x] `loading.tsx` + `not-found.tsx` per-route
+- [x] `getBusinessDetail` (joined city + category), `getPublishedReviewsForBusinessWithUser` (joined author), `getNearbyBusinesses` (PostGIS distance)
+- [x] `lib/profile/{hours,rating,format-distance,format-phone,schema}.ts`
+- [x] Seed: 1 hero + 2 thumbnail Unsplash photos per business, deterministic by slug
+
+> **`getUser` is deferred to Phase 7** — Phase 6 has no auth-gated actions, so the only user-facing state is the disabled write-review / save buttons with tooltips.
 
 ## Phase 7 — Review submission (2d)
 

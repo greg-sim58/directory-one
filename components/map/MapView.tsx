@@ -5,11 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Map as MapboxMap, Marker, NavigationControl, Popup, type MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-import { MAPBOX_STYLE_LIGHT, MAPBOX_STYLE_DARK, getMapboxToken } from '@/lib/map/mapbox-style';
+import { MAPBOX_STYLE_LIGHT, getMapboxToken } from '@/lib/map/mapbox-style';
 import { computeBounds, boundsContainAny, type LngLat, type LngLatBounds } from '@/lib/map/bounds';
 import { MapPinMarker } from './MapPin';
 import { useMapSync } from './MapSyncProvider';
-import type { BusinessDoc } from '@/lib/validation';
+import type { MapPin } from './MapClient';
 
 // The actual Mapbox-rendering Client Component. Lazy-loaded by
 // MapClient via `next/dynamic({ ssr: false })` so the mapbox-gl bundle
@@ -22,7 +22,7 @@ import type { BusinessDoc } from '@/lib/validation';
 // changes when possible.
 
 type Props = {
-  hits: BusinessDoc[];
+  hits: MapPin[];
   citySlug: string;
   categorySlug: string;
   fallbackBounds?: LngLatBounds;
@@ -61,8 +61,6 @@ export default function MapView({ hits, citySlug, categorySlug, fallbackBounds, 
   const mapRef = useRef<MapRef | null>(null);
   const [hovered, setHovered] = useState<{ id: string; lon: number; lat: number } | null>(null);
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const dark = useMediaQuery('(prefers-color-scheme: dark)');
-  const styleUrl = dark ? MAPBOX_STYLE_DARK : MAPBOX_STYLE_LIGHT;
 
   const token = useMemo(() => getMapboxToken(), []);
 
@@ -130,7 +128,7 @@ export default function MapView({ hits, citySlug, categorySlug, fallbackBounds, 
       <MapboxMap
         ref={mapRef}
         mapboxAccessToken={token}
-        mapStyle={styleUrl}
+        mapStyle={MAPBOX_STYLE_LIGHT}
         initialViewState={
           points.length > 0
             ? { bounds: computeBounds(points) ?? undefined, fitBoundsOptions: FIT_BOUNDS_OPTIONS }
