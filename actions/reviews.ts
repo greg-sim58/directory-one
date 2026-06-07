@@ -9,20 +9,7 @@ import { checkSpam, SPAM_MESSAGES, spamReasonToField } from '@/lib/reviews/spam'
 import { hashEmail } from '@/lib/reviews/hash';
 import { checkSubmitRateLimits } from '@/lib/reviews/rate-limit';
 import { SubmitReviewSchema } from '@/lib/reviews/schema';
-
-export type SubmitReviewField = 'name' | 'email' | 'text' | 'rating' | 'form';
-
-export type SubmitReviewState =
-  | { status: 'idle' }
-  | { status: 'success'; reviewId: string }
-  | {
-      status: 'error';
-      field?: SubmitReviewField;
-      message: string;
-      values: { name: string; email: string; text: string; rating: number };
-    };
-
-export const initialReviewState: SubmitReviewState = { status: 'idle' };
+import type { SubmitReviewField, SubmitReviewState } from '@/lib/reviews/submit-state';
 
 export async function submitReview(
   _prev: SubmitReviewState,
