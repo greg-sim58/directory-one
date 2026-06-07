@@ -39,9 +39,7 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
   const [, startTransition] = useTransition();
 
   const filtered = query
-    ? cities.filter((c) =>
-        `${c.name} ${c.state ?? ''}`.toLowerCase().includes(query.toLowerCase()),
-      )
+    ? cities.filter((c) => `${c.name} ${c.state ?? ''}`.toLowerCase().includes(query.toLowerCase()))
     : cities;
 
   function selectCity(slug: string) {
@@ -80,9 +78,7 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
             return;
           }
           // Try to find the city in our list (exact name match).
-          const matched = cities.find(
-            (c) => c.name.toLowerCase() === data.city!.toLowerCase(),
-          );
+          const matched = cities.find((c) => c.name.toLowerCase() === data.city!.toLowerCase());
           if (matched) {
             selectCity(matched.slug);
             return;
@@ -193,9 +189,7 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
                   >
                     <span>
                       {c.name}
-                      {c.state && (
-                        <span className="text-muted-foreground">, {c.state}</span>
-                      )}
+                      {c.state && <span className="text-muted-foreground">, {c.state}</span>}
                     </span>
                     {isCurrent && <Check className="text-primary h-4 w-4" />}
                   </button>

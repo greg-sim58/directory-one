@@ -97,12 +97,21 @@
 
 ## Phase 7 — Review submission (2d)
 
-- [ ] `submitReview` server action (auth, rate-limit, spam heuristic)
-- [ ] Spam heuristic: no URLs, link count ≤ N, profanity, suspicious patterns
-- [ ] `ReviewForm` (client, optimistic UI, voiceover-tested)
-- [ ] `OwnerResponse` (client, inline edit, business-ownership check)
-- [ ] `revalidateTag('business:'+id)` on success
-- [ ] First-time-reviewer moderation queue (admin view)
+- [x] `submitReview` server action (Zod validate, honeypot, spam heuristic, rate-limit, dedup via unique index, `revalidatePath` on success) — `actions/reviews.ts`
+- [x] Spam heuristic: no URLs, no disposable-email domains, no all-caps text, name must contain a letter — `lib/reviews/spam.ts`
+- [x] `ReviewForm` (client, `useActionState`, optimistic close on success, live region, honeypot field, char counter, 5-star radiogroup with arrow-key nav) — `components/business/ReviewForm.tsx`
+- [x] `ReviewsList` updated to open the form in a `Dialog` (no `canWrite` prop); the seeded `verifiedPurchase` badge stays as a cosmetic signal
+- [x] Reviews table: `userId` nullable; new `authorName`, `authorEmail`, `authorEmailHash` columns; unique index `(business_id, author_email_hash)` for server-enforced dedup — `db/migrations/0002_oval_the_liberteens.sql`
+- [x] Per-IP (10/hr) + per-email (5/hr) rate limit reusing `lib/map/rate-limit.ts`
+- [x] Public display helper `formatAuthorName(name)` → "First L." — `lib/reviews/format-author.ts`
+- [x] Email hash helper `hashEmail(email)` — `lib/reviews/hash.ts`
+- [x] `getPublishedReviewsForBusinessWithUser` now `LEFT JOIN users`; DTO is `ReviewWithGuest` with pre-computed `author.display`
+- [x] Seed: each seeded review now sets `authorName`/`authorEmail`/`authorEmailHash` (deduped per business — 4 distinct authors per business)
+- [x] `useTransition` not used (server-action-based; `useActionState` handles pending); `revalidatePath` not `revalidateTag` (page is `force-dynamic`, queries are `React.cache` per-request, so `revalidateTag` would be a no-op)
+
+> **Display name = "First L."** (per Phase 7 decision). Email is stored, never shown publicly; GDPR export + delete in Phase 10 must include `authorEmail` (lookup by hash for the requesting user).
+>
+> **`OwnerResponse` + moderation queue are deferred to Phase 8** — they need auth and a dashboard, which are not in this phase.
 
 ## Phase 8 — Auth + dashboard (3–4d)
 

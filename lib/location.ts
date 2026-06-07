@@ -19,9 +19,7 @@ const DEFAULT_LOCATION: ResolvedLocation = {
 //
 // `urlSlug` should be the [city] segment from the active route; pass it from
 // the page when present, or omit it to fall through to the cookie/headers.
-export async function readResolvedLocation(
-  urlSlug?: string,
-): Promise<ResolvedLocation> {
+export async function readResolvedLocation(urlSlug?: string): Promise<ResolvedLocation> {
   // 1. URL segment
   if (urlSlug) {
     const city = await lookupCityBySlug(urlSlug);
@@ -59,10 +57,6 @@ async function lookupCityBySlug(slug: string): Promise<City | null> {
 async function lookupCityByName(name: string): Promise<City | null> {
   // Simple exact match; the seed only has Austin. Phase 5+ can add fuzzy
   // match against the cities table once more cities are seeded.
-  const rows = await db
-    .select()
-    .from(cities)
-    .where(eq(cities.name, name))
-    .limit(1);
+  const rows = await db.select().from(cities).where(eq(cities.name, name)).limit(1);
   return rows[0] ?? null;
 }

@@ -24,7 +24,7 @@ export type BusinessDetail = {
   updatedAt: Date;
 };
 
-export type ReviewWithUser = {
+export type ReviewWithGuest = {
   id: string;
   rating: 1 | 2 | 3 | 4 | 5;
   text: string;
@@ -32,7 +32,7 @@ export type ReviewWithUser = {
   ownerRespondedAt: Date | null;
   verifiedPurchase: boolean;
   createdAt: Date;
-  author: { name: string | null; image: string | null };
+  author: { name: string; display: string; image: string | null };
 };
 
 export type NearbyItem = {

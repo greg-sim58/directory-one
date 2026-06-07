@@ -1,12 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Stars } from './Stars';
 import { avgRating } from '@/lib/profile/rating';
-import type { BusinessDetail, ReviewWithUser } from '@/lib/profile/schema';
+import type { BusinessDetail, ReviewWithGuest } from '@/lib/profile/schema';
 import { openStatus, formatRelativeDate } from '@/lib/profile/hours';
 
 type Props = {
   business: BusinessDetail;
-  reviews: ReviewWithUser[];
+  reviews: ReviewWithGuest[];
   cityHref: string;
   categoryHref: string;
 };
@@ -95,7 +95,7 @@ export function NAPWHeader({ business, reviews, cityHref, categoryHref }: Props)
             <dd>
               <a
                 href={`tel:${business.phone.replace(/\D/g, '')}`}
-                className="hover:text-foreground underline-offset-4 hover:underline tabular-nums"
+                className="hover:text-foreground tabular-nums underline-offset-4 hover:underline"
               >
                 {business.phone}
               </a>
@@ -117,9 +117,7 @@ export function NAPWHeader({ business, reviews, cityHref, categoryHref }: Props)
             </dd>
           </div>
         ) : null}
-        <p className="text-xs">
-          Listed {formatRelativeDate(business.createdAt)}
-        </p>
+        <p className="text-xs">Listed {formatRelativeDate(business.createdAt)}</p>
       </dl>
     </header>
   );

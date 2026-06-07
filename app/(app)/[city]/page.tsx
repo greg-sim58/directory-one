@@ -1,10 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Search } from 'lucide-react';
-import {
-  getAllCategories,
-  getCategoryCountsByCity,
-  getFeaturedBusinesses,
-} from '@/lib/db/queries';
+import { getAllCategories, getCategoryCountsByCity, getFeaturedBusinesses } from '@/lib/db/queries';
 import { CategoryGrid } from '@/components/business/CategoryGrid';
 
 type Params = Promise<{ city: string }>;
@@ -43,8 +39,8 @@ export default async function CityHomePage({ params }: { params: Params }) {
             {prettyCitySlug(city)}
           </h1>
           <p className="text-muted-foreground max-w-xl text-lg leading-relaxed">
-            Discover trusted local services, read verified reviews, and one-tap
-            connect with the businesses that keep your life running.
+            Discover trusted local services, read verified reviews, and one-tap connect with the
+            businesses that keep your life running.
           </p>
           <form
             action={`/${city}`}
@@ -72,9 +68,7 @@ export default async function CityHomePage({ params }: { params: Params }) {
               <p className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
                 Featured this week
               </p>
-              <p className="font-display text-2xl font-medium">
-                {topCategoryName}
-              </p>
+              <p className="font-display text-2xl font-medium">{topCategoryName}</p>
               <p className="text-muted-foreground text-sm">
                 {topCategoryFeatured.length} new listings
               </p>
@@ -85,12 +79,8 @@ export default async function CityHomePage({ params }: { params: Params }) {
 
       <section className="mt-16 space-y-6">
         <div className="flex items-end justify-between gap-2">
-          <h2 className="font-display text-2xl font-semibold tracking-tight">
-            Browse by category
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            {categories.length} categories
-          </p>
+          <h2 className="font-display text-2xl font-semibold tracking-tight">Browse by category</h2>
+          <p className="text-muted-foreground text-sm">{categories.length} categories</p>
         </div>
         <CategoryGrid citySlug={city} categories={categories} counts={counts} />
       </section>

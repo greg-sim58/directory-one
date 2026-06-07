@@ -27,7 +27,10 @@ async function main() {
     SELECT name, lat, lon, ST_AsText(geom) AS wkt
     FROM businesses LIMIT 1
   `);
-  console.log('Sample business:', (sample as unknown as { rows: Record<string, unknown>[] }).rows[0]);
+  console.log(
+    'Sample business:',
+    (sample as unknown as { rows: Record<string, unknown>[] }).rows[0],
+  );
 
   // 4. PostGIS works — use a point from the first business
   const pt = await db.execute<{ lon: number; lat: number }>(sql`
@@ -39,7 +42,10 @@ async function main() {
     FROM businesses
     WHERE ST_DWithin(geom, ST_MakePoint(${seed.lon}, ${seed.lat})::geography, 5000)
   `);
-  console.log(`Businesses within 5km of first business (${seed.lat}, ${seed.lon}):`, (r as unknown as { rows: { nearby: number }[] }).rows[0].nearby);
+  console.log(
+    `Businesses within 5km of first business (${seed.lat}, ${seed.lon}):`,
+    (r as unknown as { rows: { nearby: number }[] }).rows[0].nearby,
+  );
 }
 
 main().catch((e) => {

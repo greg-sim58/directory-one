@@ -42,15 +42,13 @@ export function Gallery({ photos, name }: Props) {
       <div
         className={cn(
           'grid gap-2',
-          thumbs.length === 0
-            ? 'grid-cols-1'
-            : 'grid-cols-1 sm:grid-cols-[2fr_1fr]',
+          thumbs.length === 0 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-[2fr_1fr]',
         )}
       >
         <button
           type="button"
           onClick={() => setLightboxIndex(0)}
-          className="bg-muted relative aspect-[4/3] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 sm:aspect-[16/10]"
+          className="bg-muted focus-visible:ring-foreground/40 relative aspect-[4/3] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 sm:aspect-[16/10]"
         >
           <Image
             src={hero.url}
@@ -71,7 +69,7 @@ export function Gallery({ photos, name }: Props) {
                   key={p.url}
                   type="button"
                   onClick={() => setLightboxIndex(idx)}
-                  className="bg-muted relative aspect-square overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+                  className="bg-muted focus-visible:ring-foreground/40 relative aspect-square overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2"
                 >
                   <Image
                     src={p.url}

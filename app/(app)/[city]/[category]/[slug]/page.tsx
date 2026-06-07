@@ -74,7 +74,7 @@ export default async function BusinessProfilePage({ params }: { params: Params }
           <OneTapBar business={business} />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-            <ReviewsList business={business} reviews={reviews} canWrite={false} />
+            <ReviewsList business={business} reviews={reviews} />
             <div className="flex flex-col gap-6">
               <HoursCard business={business} />
               <NearbyMap business={business} nearby={nearby} />
@@ -138,7 +138,10 @@ function buildLocalBusinessJsonLd(
       saturday: 'Saturday',
       sunday: 'Sunday',
     };
-    for (const [k, v] of Object.entries(hours) as [keyof WeeklyHours, [string, string] | undefined][]) {
+    for (const [k, v] of Object.entries(hours) as [
+      keyof WeeklyHours,
+      [string, string] | undefined,
+    ][]) {
       if (!v) continue;
       specs.push({
         '@type': 'OpeningHoursSpecification',

@@ -2,7 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Map as MapboxMap, Marker, NavigationControl, Popup, type MapRef } from 'react-map-gl/mapbox';
+import {
+  Map as MapboxMap,
+  Marker,
+  NavigationControl,
+  Popup,
+  type MapRef,
+} from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { MAPBOX_STYLE_LIGHT, getMapboxToken } from '@/lib/map/mapbox-style';
@@ -55,7 +61,13 @@ function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-export default function MapView({ hits, citySlug, categorySlug, fallbackBounds, className }: Props) {
+export default function MapView({
+  hits,
+  citySlug,
+  categorySlug,
+  fallbackBounds,
+  className,
+}: Props) {
   const router = useRouter();
   const { selectedId } = useMapSync();
   const mapRef = useRef<MapRef | null>(null);
@@ -65,7 +77,10 @@ export default function MapView({ hits, citySlug, categorySlug, fallbackBounds, 
   const token = useMemo(() => getMapboxToken(), []);
 
   const points = useMemo<LngLat[]>(
-    () => hits.filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lon)).map((h) => [h.lon, h.lat]),
+    () =>
+      hits
+        .filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lon))
+        .map((h) => [h.lon, h.lat]),
     [hits],
   );
 
@@ -75,12 +90,15 @@ export default function MapView({ hits, citySlug, categorySlug, fallbackBounds, 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const bounds = points.length > 0 ? computeBounds(points) : fallbackBounds ?? null;
+    const bounds = points.length > 0 ? computeBounds(points) : (fallbackBounds ?? null);
     if (!bounds) return;
     if (!map.isStyleLoaded()) {
       // The map's style hasn't loaded yet — re-fit on the next load.
       const handler = () => {
-        map.fitBounds(bounds, { ...FIT_BOUNDS_OPTIONS, duration: reduceMotion ? 0 : FIT_BOUNDS_OPTIONS.duration });
+        map.fitBounds(bounds, {
+          ...FIT_BOUNDS_OPTIONS,
+          duration: reduceMotion ? 0 : FIT_BOUNDS_OPTIONS.duration,
+        });
         map.off('load', handler);
       };
       map.on('load', handler);

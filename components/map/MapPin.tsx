@@ -41,10 +41,10 @@ function MapPinImpl({ selected, onActivate, onHoverChange, name, href }: Props) 
       data-href={href}
       className={cn(
         'group relative -translate-x-1/2 -translate-y-full cursor-pointer rounded-full',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'focus-visible:ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         selected
-          ? 'z-10 h-9 w-9 bg-foreground text-background shadow-lg ring-2 ring-background focus-visible:ring-foreground'
-          : 'h-7 w-7 bg-card text-foreground shadow-md ring-1 ring-foreground/20 hover:bg-foreground hover:text-background focus-visible:ring-foreground',
+          ? 'bg-foreground text-background ring-background focus-visible:ring-foreground z-10 h-9 w-9 shadow-lg ring-2'
+          : 'bg-card text-foreground ring-foreground/20 hover:bg-foreground hover:text-background focus-visible:ring-foreground h-7 w-7 shadow-md ring-1',
         'transition-[transform,background-color,color,box-shadow] duration-150',
         selected && 'scale-125',
       )}

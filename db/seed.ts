@@ -130,13 +130,7 @@ const businessTemplates: Record<string, string[]> = {
     'Ampere Electric of {n}',
     '{n} Power Pros',
   ],
-  restaurants: [
-    'The {n} Kitchen',
-    '{n} Bistro',
-    'Casa {n}',
-    '{n} Smokehouse',
-    'The {n} Table',
-  ],
+  restaurants: ['The {n} Kitchen', '{n} Bistro', 'Casa {n}', '{n} Smokehouse', 'The {n} Table'],
   cafes: [
     '{n} Coffee Co.',
     'The {n} Bean',
@@ -165,13 +159,7 @@ const businessTemplates: Record<string, string[]> = {
     '{n} Barber & Co.',
     '{n} Color Bar',
   ],
-  gyms: [
-    '{n} Fitness',
-    'Iron {n}',
-    '{n} Strength Co.',
-    'The {n} Gym',
-    '{n} Cycle & Strength',
-  ],
+  gyms: ['{n} Fitness', 'Iron {n}', '{n} Strength Co.', 'The {n} Gym', '{n} Cycle & Strength'],
   veterinarians: [
     '{n} Animal Hospital',
     '{n} Veterinary Clinic',
@@ -318,9 +306,7 @@ async function main() {
   // UUIDs that are actually in the DB (the user UUIDs in `userRows` are
   // random per-run; on a re-seed the inserts are no-ops, leaving those
   // UUIDs dangling).
-  const seededUsers = await db
-    .select({ id: users.id, email: users.email })
-    .from(users);
+  const seededUsers = await db.select({ id: users.id, email: users.email }).from(users);
   const userByEmail = new Map(seededUsers.map((u) => [u.email, u.id]));
   const canonicalUserIds = userRows
     .map((r) => userByEmail.get(r.email))
@@ -381,12 +367,30 @@ async function main() {
     'Mixed feelings — some things were great, others could improve.',
   ];
 
+  // Re-read users with names + emails so we can populate the Phase 7
+  // author fields on each seeded review. The display layer reads
+  // `authorName` for every review, seeded and submitted.
+  const usersForReviews = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users);
+  function hashEmail(email: string): string {
+    return createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
+  }
+
   for (const biz of allBusinesses) {
-    for (let i = 0; i < 4; i++) {
-      const userId = canonicalUserIds[Math.floor(Math.random() * canonicalUserIds.length)]!;
+    // Pick 4 distinct authors per business so the Phase 7 unique
+    // constraint on (business_id, author_email_hash) is satisfied. With
+    // 10 seed users and 50 businesses, every user reviews many
+    // businesses — that's fine, the constraint is per (business, email).
+    const shuffled = [...usersForReviews].sort(() => Math.random() - 0.5);
+    const chosen = shuffled.slice(0, 4);
+    for (const author of chosen) {
       reviewRows.push({
         businessId: biz.id,
-        userId,
+        userId: author.id,
+        authorName: author.name ?? 'Anonymous',
+        authorEmail: author.email,
+        authorEmailHash: hashEmail(author.email),
         rating: (3 + Math.floor(Math.random() * 3)) as 3 | 4 | 5,
         text: reviewTexts[Math.floor(Math.random() * reviewTexts.length)],
         verifiedPurchase: Math.random() > 0.5,

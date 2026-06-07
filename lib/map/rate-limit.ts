@@ -21,11 +21,13 @@ function sweep(now: number) {
   lastSweep = now;
 }
 
-export type RateLimitResult = { ok: true; remaining: number; resetAt: number } | {
-  ok: false;
-  remaining: 0;
-  resetAt: number;
-};
+export type RateLimitResult =
+  | { ok: true; remaining: number; resetAt: number }
+  | {
+      ok: false;
+      remaining: 0;
+      resetAt: number;
+    };
 
 export function enforceRateLimit(key: string, max: number, windowMs: number): RateLimitResult {
   const now = Date.now();

@@ -13,7 +13,8 @@ import {
   type City,
   type Review,
 } from '@/lib/db/schema';
-import type { BusinessDetail, NearbyItem, ReviewWithUser } from '@/lib/profile/schema';
+import type { BusinessDetail, NearbyItem, ReviewWithGuest } from '@/lib/profile/schema';
+import { formatAuthorName } from '@/lib/reviews/format-author';
 
 // Per PLAN.md §6: per-request dedup via React.cache on the common reads.
 
@@ -44,19 +45,13 @@ export const getCategoryCountsByCity = cache(
   },
 );
 
-export const getCategoryBySlug = cache(
-  async (slug: string): Promise<Category | null> => {
-    const rows = await db.select().from(categories).where(eq(categories.slug, slug)).limit(1);
-    return rows[0] ?? null;
-  },
-);
+export const getCategoryBySlug = cache(async (slug: string): Promise<Category | null> => {
+  const rows = await db.select().from(categories).where(eq(categories.slug, slug)).limit(1);
+  return rows[0] ?? null;
+});
 
 export const getBusinessBySlug = cache(
-  async (
-    citySlug: string,
-    categorySlug: string,
-    slug: string,
-  ): Promise<Business | null> => {
+  async (citySlug: string, categorySlug: string, slug: string): Promise<Business | null> => {
     const rows = await db
       .select()
       .from(businesses)
@@ -77,9 +72,7 @@ export const getBusinessesByCategory = cache(
     return db
       .select()
       .from(businesses)
-      .where(
-        and(eq(businesses.citySlug, citySlug), eq(businesses.categorySlug, categorySlug)),
-      )
+      .where(and(eq(businesses.citySlug, citySlug), eq(businesses.categorySlug, categorySlug)))
       .orderBy(desc(businesses.createdAt))
       .limit(limit);
   },
@@ -97,20 +90,13 @@ export const getFeaturedBusinesses = cache(
 );
 
 export const getBusinessesBySlugs = cache(
-  async (
-    citySlug: string,
-    categorySlugs: string[],
-    limit = 12,
-  ): Promise<Business[]> => {
+  async (citySlug: string, categorySlugs: string[], limit = 12): Promise<Business[]> => {
     if (categorySlugs.length === 0) return [];
     return db
       .select()
       .from(businesses)
       .where(
-        and(
-          eq(businesses.citySlug, citySlug),
-          inArray(businesses.categorySlug, categorySlugs),
-        ),
+        and(eq(businesses.citySlug, citySlug), inArray(businesses.categorySlug, categorySlugs)),
       )
       .orderBy(desc(businesses.createdAt))
       .limit(limit);
@@ -167,11 +153,7 @@ export const countBusinesses = cache(
 // per request per slug, deduped via React.cache. Uses DTO projection so
 // the page doesn't need to import the raw schema types.
 export const getBusinessDetail = cache(
-  async (
-    citySlug: string,
-    categorySlug: string,
-    slug: string,
-  ): Promise<BusinessDetail | null> => {
+  async (citySlug: string, categorySlug: string, slug: string): Promise<BusinessDetail | null> => {
     const rows = await db
       .select({
         id: businesses.id,
@@ -209,10 +191,13 @@ export const getBusinessDetail = cache(
   },
 );
 
-// Phase 6: published reviews with the author row joined. The reviews
-// query is the basis for both the list and the avg-rating summary.
+// Phase 6/7: published reviews with the author row joined. Phase 7 made
+// `user_id` nullable on `reviews` and added denormalized author columns
+// (`author_name`, `author_email_hash`). We LEFT JOIN users so guest
+// reviews (userId = null) still come back. `author.display` is computed
+// here (server-side, locale-free) so the client never sees the full name.
 export const getPublishedReviewsForBusinessWithUser = cache(
-  async (businessId: string, limit = 20): Promise<ReviewWithUser[]> => {
+  async (businessId: string, limit = 20): Promise<ReviewWithGuest[]> => {
     const rows = await db
       .select({
         id: reviews.id,
@@ -222,24 +207,32 @@ export const getPublishedReviewsForBusinessWithUser = cache(
         ownerRespondedAt: reviews.ownerRespondedAt,
         verifiedPurchase: reviews.verifiedPurchase,
         createdAt: reviews.createdAt,
-        authorName: users.name,
-        authorImage: users.image,
+        authorName: reviews.authorName,
+        userName: users.name,
+        userImage: users.image,
       })
       .from(reviews)
-      .innerJoin(users, eq(users.id, reviews.userId))
+      .leftJoin(users, eq(users.id, reviews.userId))
       .where(and(eq(reviews.businessId, businessId), eq(reviews.status, 'published')))
       .orderBy(desc(reviews.createdAt))
       .limit(limit);
-    return rows.map((r) => ({
-      id: r.id,
-      rating: r.rating as 1 | 2 | 3 | 4 | 5,
-      text: r.text,
-      ownerResponse: r.ownerResponse,
-      ownerRespondedAt: r.ownerRespondedAt,
-      verifiedPurchase: r.verifiedPurchase,
-      createdAt: r.createdAt,
-      author: { name: r.authorName, image: r.authorImage },
-    }));
+    return rows.map((r) => {
+      const name = r.authorName ?? r.userName ?? 'Anonymous';
+      return {
+        id: r.id,
+        rating: r.rating as 1 | 2 | 3 | 4 | 5,
+        text: r.text,
+        ownerResponse: r.ownerResponse,
+        ownerRespondedAt: r.ownerRespondedAt,
+        verifiedPurchase: r.verifiedPurchase,
+        createdAt: r.createdAt,
+        author: {
+          name,
+          display: formatAuthorName(name),
+          image: r.userImage,
+        },
+      };
+    });
   },
 );
 
@@ -276,10 +269,12 @@ export const getNearbyBusinesses = cache(
           sql`${businesses.id} <> ${businessId}`,
         ),
       )
-      .orderBy(sql`ST_Distance(
+      .orderBy(
+        sql`ST_Distance(
         ${businesses.geom},
         ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography
-      )`)
+      )`,
+      )
       .limit(limit);
     return rows as NearbyItem[];
   },

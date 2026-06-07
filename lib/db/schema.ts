@@ -56,12 +56,7 @@ export const businessStatus = pgEnum('business_status', [
 ]);
 export const reviewStatus = pgEnum('review_status', ['pending', 'published', 'rejected']);
 export const photoStatus = pgEnum('photo_status', ['pending', 'published', 'rejected']);
-export const claimStatus = pgEnum('claim_status', [
-  'pending',
-  'verified',
-  'expired',
-  'revoked',
-]);
+export const claimStatus = pgEnum('claim_status', ['pending', 'verified', 'expired', 'revoked']);
 export const reportStatus = pgEnum('report_status', ['open', 'resolved', 'dismissed']);
 
 // ---------- Auth.js tables (adapter-required shapes) ----------
@@ -95,9 +90,7 @@ export const accounts = pgTable(
     id_token: text('id_token'),
     session_state: text('session_state'),
   },
-  (account) => [
-    primaryKey({ columns: [account.provider, account.providerAccountId] }),
-  ],
+  (account) => [primaryKey({ columns: [account.provider, account.providerAccountId] })],
 );
 
 export const sessions = pgTable('sessions', {
@@ -180,19 +173,21 @@ export const businesses = pgTable(
     email: text('email'),
     hours: jsonb('hours').$type<WeeklyHours>(),
     priceTier: smallint('price_tier'),
-    amenities: text('amenities').array().default(sql`'{}'::text[]`).notNull(),
-    photos: jsonb('photos').$type<PhotoRef[]>().default(sql`'[]'::jsonb`).notNull(),
+    amenities: text('amenities')
+      .array()
+      .default(sql`'{}'::text[]`)
+      .notNull(),
+    photos: jsonb('photos')
+      .$type<PhotoRef[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
     status: businessStatus('status').default('unclaimed').notNull(),
     claimedByUserId: text('claimed_by_user_id').references(() => users.id),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (b) => [
-    uniqueIndex('businesses_city_category_slug_unique').on(
-      b.citySlug,
-      b.categorySlug,
-      b.slug,
-    ),
+    uniqueIndex('businesses_city_category_slug_unique').on(b.citySlug, b.categorySlug, b.slug),
     index('businesses_category_idx').on(b.categorySlug),
     index('businesses_geom_idx').using('gist', b.geom),
   ],
@@ -207,9 +202,13 @@ export const reviews = pgTable(
     businessId: text('business_id')
       .notNull()
       .references(() => businesses.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    // Phase 7: userId is now nullable. Guest reviews identify the author
+    // via authorEmailHash instead. Existing seeded reviews keep their
+    // userId so the FK remains valid; new guest reviews pass null.
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    authorName: text('author_name').notNull(),
+    authorEmail: text('author_email').notNull(),
+    authorEmailHash: text('author_email_hash').notNull(),
     rating: smallint('rating').notNull(),
     text: text('text').notNull(),
     ownerResponse: text('owner_response'),
@@ -221,6 +220,10 @@ export const reviews = pgTable(
   (r) => [
     index('reviews_business_created_idx').on(r.businessId, r.createdAt),
     index('reviews_user_idx').on(r.userId),
+    // Server-enforced dedup: one review per email per business.
+    uniqueIndex('reviews_business_email_idx').on(r.businessId, r.authorEmailHash),
+    // Rate-limit / future "my reviews" lookups.
+    index('reviews_email_hash_idx').on(r.authorEmailHash),
   ],
 );
 

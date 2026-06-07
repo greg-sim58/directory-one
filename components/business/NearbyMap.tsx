@@ -42,7 +42,7 @@ export function NearbyMap({ business, nearby }: Props) {
               <li key={n.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <a
                   href={`/${business.city.slug}/${business.category.slug}/${n.slug}`}
-                  className="text-foreground hover:underline truncate"
+                  className="text-foreground truncate hover:underline"
                 >
                   {n.name}
                 </a>

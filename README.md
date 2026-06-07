@@ -102,11 +102,11 @@ If `NEXT_PUBLIC_MAPBOX_TOKEN` is missing, the map area renders a "Map unavailabl
 
 ### Layout
 
-| Breakpoint | Layout |
-|---|---|
-| `< lg` (< 1024) | Stacked: filter → list → map (full-width, h-72) |
-| `lg` (1024–1279) | 2 cols: filter (sticky) \| (list + map stacked) |
-| `xl`+ (≥ 1280) | 3 cols: filter (sticky) \| list \| map (sticky, full-height-ish) |
+| Breakpoint       | Layout                                                           |
+| ---------------- | ---------------------------------------------------------------- |
+| `< lg` (< 1024)  | Stacked: filter → list → map (full-width, h-72)                  |
+| `lg` (1024–1279) | 2 cols: filter (sticky) \| (list + map stacked)                  |
+| `xl`+ (≥ 1280)   | 3 cols: filter (sticky) \| list \| map (sticky, full-height-ish) |
 
 ### List ↔ pin sync
 
@@ -134,14 +134,14 @@ mapbox-gl + react-map-gl ≈ 250 KB gzipped. Because they're inside `next/dynami
 
 ### Layout
 
-| Region        | Type   | Notes |
-|---------------|--------|-------|
-| Gallery       | Client | 1–3 photo layout, lightbox via shadcn Dialog, arrow + ESC nav, `next/image priority` on the hero |
-| NAPWHeader    | RSC    | Breadcrumb, badges (status, open/closed, price), Stars, address/phone/website as plain `<a>` |
-| OneTapBar     | Client | Sticky bottom on mobile (IntersectionObserver hides past the NAPW), inline card on desktop; Call/Directions/Share enabled, Save + Write-a-review disabled with tooltips |
-| ReviewsList   | RSC    | Summary header, sorted by `created_at desc`, owner-response blockquote |
-| HoursCard     | RSC    | 7-row list, today row bolded, server-formatted `9:00 AM – 5:00 PM` in city timezone |
-| NearbyMap     | RSC    | Reuses `MapClient` (lazy-loaded Mapbox), 8 nearest neighbors via `ST_Distance` + `ST_DWithin` |
+| Region      | Type   | Notes                                                                                                                                                                   |
+| ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gallery     | Client | 1–3 photo layout, lightbox via shadcn Dialog, arrow + ESC nav, `next/image priority` on the hero                                                                        |
+| NAPWHeader  | RSC    | Breadcrumb, badges (status, open/closed, price), Stars, address/phone/website as plain `<a>`                                                                            |
+| OneTapBar   | Client | Sticky bottom on mobile (IntersectionObserver hides past the NAPW), inline card on desktop; Call/Directions/Share enabled, Save + Write-a-review disabled with tooltips |
+| ReviewsList | RSC    | Summary header, sorted by `created_at desc`, owner-response blockquote                                                                                                  |
+| HoursCard   | RSC    | 7-row list, today row bolded, server-formatted `9:00 AM – 5:00 PM` in city timezone                                                                                     |
+| NearbyMap   | RSC    | Reuses `MapClient` (lazy-loaded Mapbox), 8 nearest neighbors via `ST_Distance` + `ST_DWithin`                                                                           |
 
 ### Photos
 
@@ -160,3 +160,48 @@ A `<script type="application/ld+json">` block emits Schema.org `LocalBusiness` w
 ### Auth-dependent actions
 
 Phase 6 renders "Write a review" and "Save" as disabled buttons with `title` tooltips (`"Sign in to write a review (coming soon)"`). They become real in Phase 7 / 8 — no link to `/signin` from the profile page in this phase.
+
+## Review submission (Phase 7)
+
+Anyone can write a review from the business profile page — no account required. The form collects a name and an email; both are stored privately and only `authorName` (formatted as "First L.") is shown publicly.
+
+### Flow
+
+1. User clicks **Write a review** in `ReviewsList` → opens a `Dialog` containing `ReviewForm`.
+2. Form has: 5-star picker (radiogroup, arrow-key support), Name, Email, Text, hidden honeypot.
+3. Submit hits the `submitReview` server action in `actions/reviews.ts`.
+4. Server pipeline (all in one round-trip, in this order):
+   1. **Honeypot** — if the hidden `website` field is filled, return a fake success silently.
+   2. **Zod** — `SubmitReviewSchema` validates shape (`name 1–80`, `email ≤ 120`, `text 10–2000`, `rating 1–5`).
+   3. **Spam heuristic** (`lib/reviews/spam.ts`): no URLs in text, no disposable email domains (`mailinator.com`, `10minutemail.com`, …), no all-caps text ≥ 20 letters with no lowercase letters, name must contain at least one letter.
+   4. **Rate limit** — 10/hr per IP, 5/hr per `email_hash` (reuses `enforceRateLimit` from `lib/map/rate-limit.ts`).
+   5. **Insert** — writes a row with `authorName` + `authorEmail` + `authorEmailHash` (lowercase SHA-256 hex of the email). The unique index `(business_id, author_email_hash)` enforces one-review-per-email-per-business server-side; a violation is caught and surfaced as "You've already reviewed this business."
+   6. **Revalidate** — `revalidatePath('/{city}/{category}/{slug}')` so the new review appears on the next render.
+5. On `success`, the dialog closes and `sonner` shows a toast. On `error`, the field-level message renders inline and the form values are preserved.
+
+### Public display
+
+`lib/reviews/format-author.ts` converts the raw name to `First L.` (e.g., `"John Michael Doe" → "John D."`, `"Mary" → "Mary"`, `"X Æ A-12" → "X Æ A."`). Pre-computed in the DB query so the client never sees the full name. The email is stored, never displayed.
+
+### Schema
+
+Migration `0002_oval_the_liberteens.sql` (generated) made `reviews.user_id` nullable and added three columns:
+
+| Column              | Type          | Notes                                                                   |
+| ------------------- | ------------- | ----------------------------------------------------------------------- |
+| `author_name`       | text NOT NULL | Public display input, formatted server-side                             |
+| `author_email`      | text NOT NULL | Stored privately; GDPR export + delete flows must include it (Phase 10) |
+| `author_email_hash` | text NOT NULL | Lowercase SHA-256 hex; used in the unique index and as a rate-limit key |
+
+Two new indexes back the dedup and the future "my reviews" lookup:
+
+- `reviews_business_email_idx` UNIQUE (`business_id`, `author_email_hash`)
+- `reviews_email_hash_idx` (`author_email_hash`)
+
+The query helper `getPublishedReviewsForBusinessWithUser` was renamed (DTO) to `ReviewWithGuest` with a pre-computed `author.display` field. `userId` is kept on guest reviews as `null`; seeded reviews still attribute to the seed user so the `users.id` FK stays valid for any future claim flow.
+
+### Out of scope (Phase 8)
+
+- Owner responses (requires auth + business-ownership check).
+- First-time-reviewer moderation queue (requires an admin view).
+- "Claim" of guest reviews at sign-in (lookup by `authorEmailHash` against the signed-in user's verified email).

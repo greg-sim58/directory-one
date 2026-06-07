@@ -119,12 +119,7 @@ export function OneTapBar({ business }: Props) {
             <Share2 />
             Share
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled
-            title="Sign in to save (coming soon)"
-          >
+          <Button type="button" variant="ghost" disabled title="Sign in to save (coming soon)">
             <Bookmark />
             Save
           </Button>

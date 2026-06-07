@@ -141,7 +141,7 @@ export default async function CategoryPage({
           </Suspense>
         </div>
 
-        <div className="flex flex-col gap-4 xl:sticky xl:top-20 xl:self-start xl:max-h-[calc(100vh-6rem)]">
+        <div className="flex flex-col gap-4 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:self-start">
           <Suspense fallback={<MapRegionSkeleton className="h-72 xl:h-[calc(100vh-8rem)]" />}>
             <MapRegion
               citySlug={city}

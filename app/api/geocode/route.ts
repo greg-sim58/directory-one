@@ -32,10 +32,7 @@ async function geocodeForward(q: string) {
 
   const token = process.env.MAPBOX_SECRET_TOKEN;
   if (!token) {
-    return NextResponse.json(
-      { error: 'MAPBOX_SECRET_TOKEN is not configured' },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: 'MAPBOX_SECRET_TOKEN is not configured' }, { status: 503 });
   }
 
   const url = `${MAPBOX_BASE}/${encodeURIComponent(q)}.json?access_token=${token}&limit=1`;
@@ -61,10 +58,7 @@ async function geocodeReverse(lat: number, lon: number) {
 
   const token = process.env.MAPBOX_SECRET_TOKEN;
   if (!token) {
-    return NextResponse.json(
-      { error: 'MAPBOX_SECRET_TOKEN is not configured' },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: 'MAPBOX_SECRET_TOKEN is not configured' }, { status: 503 });
   }
 
   const url = `${MAPBOX_BASE}/${lon},${lat}.json?access_token=${token}&limit=1&types=place`;
@@ -112,11 +106,12 @@ export async function GET(request: NextRequest) {
   }
 
   const { q, lat, lon } = parsed.data;
-  const result = lat !== undefined && lon !== undefined
-    ? await geocodeReverse(lat, lon)
-    : q
-      ? await geocodeForward(q)
-      : NextResponse.json({ error: 'q or lat/lon required' }, { status: 400 });
+  const result =
+    lat !== undefined && lon !== undefined
+      ? await geocodeReverse(lat, lon)
+      : q
+        ? await geocodeForward(q)
+        : NextResponse.json({ error: 'q or lat/lon required' }, { status: 400 });
 
   if (result instanceof NextResponse) return result;
   return NextResponse.json(result, {

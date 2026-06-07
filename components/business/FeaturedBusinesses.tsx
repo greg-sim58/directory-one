@@ -39,9 +39,7 @@ export function FeaturedBusinesses({ citySlug, categorySlug, businesses, categor
                 <span className="text-foreground line-clamp-1 font-medium">{b.name}</span>
                 <Icon className="text-muted-foreground h-4 w-4 shrink-0" />
               </div>
-              <p className="text-muted-foreground line-clamp-2 text-sm">
-                {b.description}
-              </p>
+              <p className="text-muted-foreground line-clamp-2 text-sm">{b.description}</p>
               <div className="text-muted-foreground flex items-center gap-1 text-xs">
                 <MapPin className="h-3 w-3" />
                 <span className="truncate">{b.address}</span>

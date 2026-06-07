@@ -10,10 +10,7 @@ import { getCategoryIcon } from '@/lib/category-icons';
 export const dynamic = 'force-dynamic';
 
 export default async function MarketingHome() {
-  const [cities, categories] = await Promise.all([
-    getAllCities(),
-    getAllCategories(),
-  ]);
+  const [cities, categories] = await Promise.all([getAllCities(), getAllCategories()]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -31,9 +28,8 @@ export default async function MarketingHome() {
                 Find the local services worth your time.
               </h1>
               <p className="text-muted-foreground max-w-xl text-lg leading-relaxed sm:text-xl">
-                A modern directory for the city you live in. Verified reviews,
-                rich profiles, and one-tap connections to the businesses that
-                keep your life running.
+                A modern directory for the city you live in. Verified reviews, rich profiles, and
+                one-tap connections to the businesses that keep your life running.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 {cities.slice(0, 1).map((c) => (
@@ -112,9 +108,7 @@ export default async function MarketingHome() {
                       </span>
                       <Icon className="text-muted-foreground h-4 w-4" />
                     </div>
-                    <h3 className="font-display text-xl font-semibold tracking-tight">
-                      {s.title}
-                    </h3>
+                    <h3 className="font-display text-xl font-semibold tracking-tight">{s.title}</h3>
                     <p className="text-muted-foreground leading-relaxed">{s.body}</p>
                   </li>
                 );

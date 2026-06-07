@@ -35,9 +35,7 @@ export function HoursCard({ business }: Props) {
                   }
                 >
                   <span className="capitalize">{day}</span>
-                  <span
-                    className={isToday ? 'tabular-nums' : 'text-muted-foreground tabular-nums'}
-                  >
+                  <span className={isToday ? 'tabular-nums' : 'text-muted-foreground tabular-nums'}>
                     {window ? formatTimeRange(window[0], window[1]) : 'Closed'}
                   </span>
                 </li>

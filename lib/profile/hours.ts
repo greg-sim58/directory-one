@@ -110,7 +110,8 @@ function nextOpenDayInTimezone(
     if (window) {
       const parsed = parseHHMM(window[0]);
       if (parsed) {
-        const addDays = i === 0 && parsed.h * 60 + parsed.m <= minutesIntoDayInTimezone(now, timezone) ? 1 : i;
+        const addDays =
+          i === 0 && parsed.h * 60 + parsed.m <= minutesIntoDayInTimezone(now, timezone) ? 1 : i;
         return new Date(now.getTime() + addDays * 86_400_000);
       }
     }
