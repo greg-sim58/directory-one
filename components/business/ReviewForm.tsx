@@ -15,10 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { submitReview } from '@/actions/reviews';
-import {
-  initialReviewState,
-  type SubmitReviewState,
-} from '@/lib/reviews/submit-state';
+import { initialReviewState, type SubmitReviewState } from '@/lib/reviews/submit-state';
 
 type Props = {
   businessId: string;

@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Fraunces } from 'next/font/google';
 import { InlineScript } from '@/components/util/InlineScript';
+import { LocationProvider } from '@/components/providers/LocationProvider';
+import { getAllCities } from '@/lib/db/queries';
 import './globals.css';
+
+// The root layout reads the DB (to pass the city catalog to the auto-prompt
+// in LocationProvider). force-dynamic keeps the build from trying to
+// prerender without DATABASE_URL set. See AGENTS.md "DB module is a lazy
+// Proxy" and the per-route force-dynamic notes.
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: '--font-sans',
@@ -46,11 +54,13 @@ const themeScript = `
 })();
 `.trim();
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cities = await getAllCities();
+  const cityList = cities.map((c) => ({ slug: c.slug, name: c.name }));
   return (
     <html
       lang="en"
@@ -62,7 +72,7 @@ export default function RootLayout({
         <InlineScript html={themeScript} />
       </head>
       <body className="bg-background text-foreground flex min-h-full flex-col font-sans">
-        {children}
+        <LocationProvider cities={cityList}>{children}</LocationProvider>
       </body>
     </html>
   );

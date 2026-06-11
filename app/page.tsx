@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { getAllCities, getAllCategories } from '@/lib/db/queries';
 import { getCategoryIcon } from '@/lib/category-icons';
+import { HomeSearch } from '@/components/search/HomeSearch';
 
 // Marketing home reads from the DB at request time. Force-dynamic so the
 // build doesn't try to prerender without DATABASE_URL.
@@ -19,6 +20,13 @@ export default async function MarketingHome() {
       <main className="flex-1">
         {/* Hero */}
         <section className="mx-auto max-w-7xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24 sm:pb-20">
+          <div className="mb-12 sm:mb-16">
+            <HomeSearch
+              cities={cities.map((c) => ({ slug: c.slug, name: c.name }))}
+              defaultCitySlug={cities[0]?.slug ?? 'austin-tx'}
+            />
+          </div>
+
           <div className="grid items-end gap-8 lg:grid-cols-[3fr_2fr] lg:gap-16">
             <div className="space-y-6">
               <p className="text-muted-foreground text-sm font-medium tracking-widest uppercase">

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Check, Loader2, MapPin, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,94 +13,62 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useLocationPicker } from '@/components/providers/LocationProvider';
 import type { City } from '@/lib/db/schema';
 
 type Props = {
   currentCityName: string;
   currentCitySlug: string;
+  displayName?: string;
+  isGeoLabel?: boolean;
   cities: Pick<City, 'slug' | 'name' | 'state'>[];
 };
 
-type GeoStatus = 'idle' | 'locating' | 'resolving' | 'unsupported' | 'denied' | 'noresult';
-
-function slugifyToCitySlug(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
-
-export function LocationPicker({ currentCityName, currentCitySlug, cities }: Props) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
+export function LocationPicker({
+  currentCityName,
+  currentCitySlug,
+  displayName,
+  isGeoLabel,
+  cities,
+}: Props) {
+  const {
+    isPickerOpen,
+    setPickerOpen,
+    candidates,
+    geoStatus,
+    requestLocation,
+    commitCandidate,
+    selectCatalogCity,
+  } = useLocationPicker();
   const [query, setQuery] = useState('');
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle');
-  const [, startTransition] = useTransition();
 
   const filtered = query
     ? cities.filter((c) => `${c.name} ${c.state ?? ''}`.toLowerCase().includes(query.toLowerCase()))
     : cities;
 
-  function selectCity(slug: string) {
-    document.cookie = `loc=${slug}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    startTransition(() => {
-      router.push(`/${slug}`);
-      router.refresh();
-    });
-    setOpen(false);
+  const label = displayName ?? currentCityName;
+  const inFlight = geoStatus === 'locating' || geoStatus === 'resolving';
+
+  function commitCity(slug: string) {
+    selectCatalogCity(slug);
     setQuery('');
-    setGeoStatus('idle');
   }
 
-  async function useCurrentLocation() {
-    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-      setGeoStatus('unsupported');
-      return;
-    }
-    setGeoStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setGeoStatus('resolving');
-        try {
-          const params = new URLSearchParams({
-            lat: pos.coords.latitude.toString(),
-            lon: pos.coords.longitude.toString(),
-          });
-          const res = await fetch(`/api/geocode?${params.toString()}`);
-          if (!res.ok) {
-            setGeoStatus('noresult');
-            return;
-          }
-          const data = (await res.json()) as { city?: string };
-          if (!data.city) {
-            setGeoStatus('noresult');
-            return;
-          }
-          // Try to find the city in our list (exact name match).
-          const matched = cities.find((c) => c.name.toLowerCase() === data.city!.toLowerCase());
-          if (matched) {
-            selectCity(matched.slug);
-            return;
-          }
-          // No match — navigate to a slug derived from the name so the user
-          // sees a real URL. The 404 page handles the not-yet-seeded case.
-          selectCity(slugifyToCitySlug(data.city));
-        } catch {
-          setGeoStatus('noresult');
-        }
-      },
-      () => setGeoStatus('denied'),
-      { enableHighAccuracy: false, timeout: 8000 },
-    );
+  function commitCandidatePick(candidate: Parameters<typeof commitCandidate>[0]) {
+    commitCandidate(candidate);
+    setQuery('');
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isPickerOpen} onOpenChange={setPickerOpen}>
       <DialogTrigger
         render={
           <Button variant="ghost" size="sm" className="text-foreground gap-1.5">
             <MapPin className="h-4 w-4" />
-            <span className="max-w-[10rem] truncate">{currentCityName}</span>
+            <span className="max-w-[10rem] truncate">{label}</span>
+            {isGeoLabel && (
+              <span className="text-muted-foreground text-xs font-normal">(change)</span>
+            )}
           </Button>
         }
       />
@@ -117,11 +84,11 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
           <Button
             type="button"
             variant="outline"
-            onClick={useCurrentLocation}
-            disabled={geoStatus === 'locating' || geoStatus === 'resolving'}
+            onClick={() => void requestLocation()}
+            disabled={inFlight}
             className="justify-start"
           >
-            {geoStatus === 'locating' || geoStatus === 'resolving' ? (
+            {inFlight ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <MapPin className="h-4 w-4" />
@@ -139,10 +106,49 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
               Geolocation isn&apos;t available in this browser.
             </p>
           )}
-          {geoStatus === 'noresult' && (
+          {geoStatus === 'unconfigured' && (
             <p className="text-muted-foreground text-xs">
-              We couldn&apos;t match that to a city in our directory yet.
+              Location lookup isn&apos;t configured. Set <code>MAPBOX_SECRET_TOKEN</code> in
+              <code> .env</code> to enable nearby town suggestions, or search for a city below.
             </p>
+          )}
+          {geoStatus === 'noresult' && candidates.length === 0 && (
+            <p className="text-muted-foreground text-xs">
+              We couldn&apos;t match that to a city. Pick one nearby or search below.
+            </p>
+          )}
+
+          {candidates.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-muted-foreground text-xs font-medium uppercase">
+                Towns near you
+              </span>
+              <ul className="rounded-md border">
+                {candidates.map((c, i) => {
+                  const subtitle = c.region ?? c.country ?? '';
+                  const inCatalog = cities.some(
+                    (city) => city.name.toLowerCase() === c.city.toLowerCase(),
+                  );
+                  return (
+                    <li key={`${c.city}-${c.region ?? ''}-${i}`}>
+                      <button
+                        type="button"
+                        onClick={() => commitCandidatePick(c)}
+                        className="hover:bg-muted flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm"
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          {c.city}
+                          {subtitle && <span className="text-muted-foreground">, {subtitle}</span>}
+                        </span>
+                        {inCatalog && (
+                          <span className="text-primary text-xs font-medium">In directory</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
 
           <div className="flex items-center gap-2">
@@ -184,7 +190,7 @@ export function LocationPicker({ currentCityName, currentCitySlug, cities }: Pro
                 <li key={c.slug}>
                   <button
                     type="button"
-                    onClick={() => selectCity(c.slug)}
+                    onClick={() => commitCity(c.slug)}
                     className="hover:bg-muted flex w-full items-center justify-between px-4 py-3 text-left text-sm"
                   >
                     <span>

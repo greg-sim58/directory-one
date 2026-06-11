@@ -20,6 +20,23 @@ const facetsCache = new LRUCache<string, FacetCounts>({
   ttl: 60 * 1000, // 60 seconds
 });
 
+const resolveCache = new LRUCache<string, ResolveResult>({
+  max: 5_000,
+  ttl: 10 * 60 * 1000, // 10 minutes
+});
+
+export type ResolveCandidate = {
+  city: string;
+  region?: string;
+  country?: string;
+  lat: number;
+  lon: number;
+};
+
+export type ResolveResult = {
+  candidates: ResolveCandidate[];
+};
+
 export function getCachedGeocode(query: string) {
   return geocodeCache.get(query.toLowerCase().trim());
 }
@@ -42,4 +59,12 @@ export function getCachedFacets(key: string): FacetCounts | undefined {
 
 export function setCachedFacets(key: string, value: FacetCounts) {
   facetsCache.set(key, value);
+}
+
+export function getCachedResolve(key: string): ResolveResult | undefined {
+  return resolveCache.get(key);
+}
+
+export function setCachedResolve(key: string, value: ResolveResult): void {
+  resolveCache.set(key, value);
 }

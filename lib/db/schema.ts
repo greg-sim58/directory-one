@@ -132,6 +132,30 @@ export const categories = pgTable('categories', {
   filterSchema: jsonb('filter_schema'),
 });
 
+// Anonymous visitor location preference (home-page Town/City field). There
+// is no user/session yet (auth adapter is Phase 8), so the row is keyed by
+// an anonymous `vid` cookie instead of a user id. `citySlug` is the matched
+// catalog slug when the typed town maps to a directory city, or null for
+// off-catalog towns (no FK so off-catalog towns persist cleanly).
+export const locationPreferences = pgTable(
+  'location_preferences',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    visitorId: text('visitor_id').notNull(),
+    townName: text('town_name').notNull(),
+    region: varchar('region', { length: 64 }),
+    country: varchar('country', { length: 64 }),
+    citySlug: varchar('city_slug', { length: 64 }),
+    lat: doublePrecision('lat'),
+    lon: doublePrecision('lon'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (lp) => [uniqueIndex('location_preferences_visitor_idx').on(lp.visitorId)],
+);
+
 export type WeeklyHours = Partial<{
   monday: [string, string];
   tuesday: [string, string];
@@ -325,6 +349,8 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 
 export type City = typeof cities.$inferSelect;
 export type Category = typeof categories.$inferSelect;
+export type LocationPreference = typeof locationPreferences.$inferSelect;
+export type NewLocationPreference = typeof locationPreferences.$inferInsert;
 export type Business = typeof businesses.$inferSelect;
 export type NewBusiness = typeof businesses.$inferInsert;
 export type Review = typeof reviews.$inferSelect;

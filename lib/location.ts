@@ -3,12 +3,17 @@ import { cookies, headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { cities, type City } from '@/lib/db/schema';
-import type { ResolvedLocation } from '@/components/providers/LocationProvider';
+import type { DisplayLocation, ResolvedLocation } from '@/components/providers/LocationProvider';
 
 const DEFAULT_LOCATION: ResolvedLocation = {
   source: 'default',
   citySlug: 'austin-tx',
   cityName: 'Austin, TX',
+};
+
+const DEFAULT_DISPLAY: DisplayLocation = {
+  source: 'default',
+  displayName: '',
 };
 
 // Resolves the user's location in priority order (PLAN.md §3):
@@ -47,6 +52,37 @@ export async function readResolvedLocation(urlSlug?: string): Promise<ResolvedLo
 
   void geoRegion;
   return DEFAULT_LOCATION;
+}
+
+// Reads the `geo` cookie (set client-side after a geolocation resolve) and
+// returns a DisplayLocation for the header label. Distinct from the catalog
+// ResolvedLocation: the user may be in a city that isn't in our directory
+// (e.g., Newquay) — in that case the label should still reflect the user's
+// actual place, while the catalog browse falls back to the default city.
+export async function readDisplayLocation(): Promise<DisplayLocation> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get('geo')?.value;
+  if (!raw) return DEFAULT_DISPLAY;
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw)) as unknown;
+    if (!parsed || typeof parsed !== 'object') return DEFAULT_DISPLAY;
+    const p = parsed as Record<string, unknown>;
+    if (typeof p.city !== 'string') return DEFAULT_DISPLAY;
+    const region = typeof p.region === 'string' ? p.region : undefined;
+    const country = typeof p.country === 'string' ? p.country : undefined;
+    const displayName = region ? `${p.city}, ${region}` : p.city;
+    return {
+      source: 'geo',
+      displayName,
+      city: p.city,
+      region,
+      country,
+      lat: typeof p.lat === 'number' ? p.lat : undefined,
+      lon: typeof p.lon === 'number' ? p.lon : undefined,
+    };
+  } catch {
+    return DEFAULT_DISPLAY;
+  }
 }
 
 async function lookupCityBySlug(slug: string): Promise<City | null> {
